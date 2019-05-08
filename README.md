@@ -19,9 +19,9 @@ You need:
 
 ### Setup
 * Copy the content of the `html` folder to your webserver. If you are not using Apache2.4 or higher, be sure to adjust the `.htaccess` files.
-** For displaying images, the client needs acces to `ajax.php`, `display.php`, `images/`, `js` and `css`.
-** The rest of the files in `html` only needs to be accessed for managing the images and devices.
-** No one needs access to `config/` via the webserver. The `config.php` is read via an include statement in `php` and never by `GET`.
+  * For displaying images, the client needs acces to `ajax.php`, `display.php`, `images/`, `js` and `css`.
+  * The rest of the files in `html` only needs to be accessed for managing the images and devices.
+  * No one needs access to `config/` via the webserver. The `config.php` is read via an include statement in `php` and never by `GET`.
 
 * The easiest way to protect the management interface is to set up `BasicAuth` with your webserver. An example for Apache can be found here: https://www.digitalocean.com/community/tutorials/how-to-set-up-password-authentication-with-apache-on-ubuntu-14-04 If you but the `.htpasswd` file anywhere else than `/etc/apache2/.htpasswd`, adjust the path in `html/.htaccess/` accordingly.
 * If you run `PiSimpleSignage` in a subfolder (e.g. `https://your-domain.com/<your-folder>/`), add the subfolder in `html/.htaccess/` like this:
