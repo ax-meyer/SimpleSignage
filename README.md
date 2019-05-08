@@ -8,7 +8,10 @@ I have been using this tool in its current form for a couple of months now witho
 ## Getting Started
 
 There is no automated way to set it up until now. However, it is fairly straightforward.\
-**If you know what you are doing**, here the tl;dr: Copy the content of `html` to your webserver. Create a sqlite database with the commands from `sql_creation.txt', copy it to the webserver. Make any changes neccessary to `config/config.php`. Make sure to set proper access rights, refer to the `.htaccess` files in `html` and its subfolders for the recommended way.\
+
+**If you know what you are doing**, here the tl;dr: Copy the content of `html` to your webserver. Make any changes neccessary to `config/config.php`. Make sure to set proper access rights, refer to the `.htaccess` files in `html` and its subfolders for the recommended way.\
+If you want to use any other database than sql, in `sql_create.txt`, the commands to create the tables and triggers neccessary are shown. Furthermore, you will need to change the database connector in the `php` files.\
+
 Furthermore, any contributions are welcome! Just send me a pull request if you add anything useful!\
 **If you do not know what you are doing** and the (fairly beta) instructions below are not enough, contact me at github@meyerweb.eu. I will try to help the best I can and if I fell that this project gains traction, I will implement an automated way to set it up.
 
@@ -36,8 +39,5 @@ AuthUserFile /etc/apache2/.htpasswd
 	Require valid-user
 </RequireAny>
 ```
-
-* Use the `SQL` commands in `sql_creantion.txt` to create a `sqlite` database and copy it to the webserver
-* Edit the path to the database in the `config/config.php` file.
 
 You should be good to go! Just open go to `index.php` in your browser for the server and start adding images. The url for displaying the images is shown on the devices page for each device.
