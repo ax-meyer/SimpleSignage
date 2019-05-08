@@ -1,0 +1,9 @@
+AuthType Basic
+AuthName "PiSimpleSignage"
+AuthUserFile /etc/apache2/.htpasswd
+
+<RequireAny>
+	Require expr %{REQUEST_URI} = "/display.php"
+	Require expr %{REQUEST_URI} = "/ajax.php"
+	Require valid-user
+</RequireAny>
