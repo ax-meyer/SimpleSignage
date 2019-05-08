@@ -8,9 +8,9 @@ I have been using this tool in its current form for a couple of months now witho
 ## Getting Started
 
 There is no automated way to set it up until now. However, it is fairly straightforward.\
-*If you know what you are doing*, here the tl;dr: Copy the content of `html` to your webserver. Create a sqlite database with the commands from `sql_creation.txt', copy it to the webserver. Make any changes neccessary to `config/config.php`. Make sure to set proper access rights, refer to the `.htaccess` files in `html` and its subfolders for the recommended way.\
+**If you know what you are doing**, here the tl;dr: Copy the content of `html` to your webserver. Create a sqlite database with the commands from `sql_creation.txt', copy it to the webserver. Make any changes neccessary to `config/config.php`. Make sure to set proper access rights, refer to the `.htaccess` files in `html` and its subfolders for the recommended way.\
 Furthermore, any contributions are welcome! Just send me a pull request if you add anything useful!\
-*If you do not know what you are doing* and the (fairly beta) instructions below are not enough, contact me at github@meyerweb.eu. I will try to help the best I can and if I fell that this project gains traction, I will implement an automated way to set it up.
+**If you do not know what you are doing** and the (fairly beta) instructions below are not enough, contact me at github@meyerweb.eu. I will try to help the best I can and if I fell that this project gains traction, I will implement an automated way to set it up.
 
 ### Prerequisites
 You need:
