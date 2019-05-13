@@ -41,3 +41,4 @@ AuthUserFile /etc/apache2/.htpasswd
 ```
 
 You should be good to go! Just open go to `index.php` in your browser for the server and start adding images. The url for displaying the images is shown on the devices page for each device.
+In the `pi_linux/` folder, you find a `autostart` file for LXDE based desktops which will launch chromium in kiosk mode. Just edit the display link to point to the device of your choice.
