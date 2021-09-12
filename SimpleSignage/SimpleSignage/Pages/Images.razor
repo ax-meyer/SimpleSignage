@@ -1,0 +1,110 @@
+﻿@page "/"
+
+@using Microsoft.EntityFrameworkCore
+@using SimpleSignage.Data;
+@inject IDbContextFactory<signageContext> DbFactory;
+
+<h1>Manage images</h1>
+
+<table class="table">
+
+    <thead>
+        <tr>
+            <th>
+                Description
+            </th>
+            <th>
+                Start on
+            </th>
+            <th>
+                End on
+            </th>
+            <th>Devices</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var image in image_list)
+        {
+            using var context = DbFactory.CreateDbContext();
+            var query = from pair in context.ImagesToDevices
+            <tr>
+                <td>
+                    @image.Description
+                </td>
+                <td>
+                    @image.DateStart
+                </td>
+                <td>
+                    @if (image.Infinite)
+                    {
+                        <p>run forever</p>
+                    }
+                    else
+                    {
+                        @image.DateEnd
+                    }
+                </td>
+                <td>
+                     
+				</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="() => deleteImage(image)">Delete</button>
+				</td>
+            </tr>
+        }
+        <tr>
+            <td>
+                <button class="btn btn-primary" @onclick="AddImage">Add image</button>
+			</td>
+		</tr>
+    </tbody>
+</table>
+
+@if (AddImageDialogOpen)
+{
+    <AddImageDialog OnClose="@AddImageDialogClosing" /> 
+}
+
+@code {
+
+
+    private bool AddImageDialogOpen { get; set; }
+
+    protected override void OnInitialized()
+    {
+        UpdateImageList();
+    }
+
+    private void UpdateImageList()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var query = from image in context.Images
+            join in context.ImagesToDevices
+                on image.Id equals devices.ImageId
+            select new { person, photo };
+		image_list = context.Images.ToList();
+    }
+
+	public List<Image> image_list { get; set; }
+
+	private void deleteImage(Image img)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Images.Remove(img);
+        context.SaveChanges();
+        UpdateImageList();
+    }
+
+    private void AddImage()
+    {
+        AddImageDialogOpen = true;
+    }
+
+    private void AddImageDialogClosing()
+    {
+        AddImageDialogOpen = false;
+    }
+
+}

@@ -1,0 +1,140 @@
+﻿@using SimpleSignage.Data;
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@using System
+@using Microsoft.AspNetCore.Hosting
+@inject IDbContextFactory<signageContext> DbFactory
+@inject IWebHostEnvironment env
+
+<div class="modal fade show" id="myModal" style="display:block; background-color: rgba(10,10,10,.8);"
+     aria-modal="true" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">This is the title</h4>
+                <button type="button" class="close" @onclick="@ModalCancel">&times;</button>
+            </div>
+            <div class="modal-body">
+
+                <EditForm Model="@NewImage" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <table class="table">
+                    <tbody>
+                <tr>
+                    <td>Description</td>
+                    <td><InputText id="name" @bind-Value="NewImage.Description" /></td>
+                </tr>
+                <tr>
+                    <td>Start date</td>
+                    <td><InputDate id="startdate" @bind-Value="NewImage.DateStart" /></td>
+				</tr>
+                <tr>
+                    <td>Run infinitely?</td>
+                    <td><InputCheckbox id="infinite" @bind-Value="NewImage.Infinite" /></td>
+				</tr>
+                @if(!NewImage.Infinite)
+                {
+                <tr>
+                    <td>End date</td>
+                    <td><InputDate id="enddate" @bind-Value="NewImage.DateEnd" /></td>
+				</tr>
+                }
+                <tr>
+                    <td>Devices to show on</td>
+                    <td>
+                     @foreach (var item in devices)
+                    {
+                        <div><InputCheckbox id="@item.Device.Name" @bind-Value="@item.Show" /> @item.Device.Name</div>
+                    }
+                    </td>
+				</tr>
+                <InputFile AllowedExtensions=".jpg;.png;" CustomExtensionMessage="Only .jpg and .png files are allowed."  OnChange="@LoadFile" />
+
+                
+                
+                </tbody>
+                </table>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+
+    public Image NewImage { get; set; } = new Image();
+    public List<DeviceShowStatePair<Device, bool>> devices { get; set; } = new List<DeviceShowStatePair<Device, bool>>();
+
+    protected override void OnInitialized()
+    {
+        using var context = DbFactory.CreateDbContext();
+        foreach (var device in context.Devices.ToList())
+        {
+            var a = new DeviceShowStatePair<Device, bool>();
+            a.Device = device;
+            a.Show = false;
+            devices.Add(a);
+        }
+    }
+
+    IBrowserFile selectedFile { get; set; }
+
+    private void LoadFile(InputFileChangeEventArgs e)
+    {
+        selectedFile= e.File;
+        this.StateHasChanged();
+    }
+
+    public async Task  UploadFile()
+    {
+        string save_filename = Guid.NewGuid().ToString() + "." + Path.GetExtension(selectedFile.Name); 
+        var path = $"{env.WebRootPath}/{save_filename}";
+
+        using Stream stream = selectedFile.OpenReadStream();
+        using FileStream fs = File.Create(path);
+        await stream.CopyToAsync(fs);
+
+        NewImage.Filename = save_filename;
+    }
+
+
+
+    [Parameter]
+    public EventCallback<bool> OnClose { get; set; }
+
+    public async Task<Task> HandleValidSubmit()
+    {
+        await UploadFile();
+        using var context = DbFactory.CreateDbContext();
+        
+        context.Images.Add(NewImage);
+
+
+        long img_id = context.Images.OrderBy(img => img.Id).Last().Id;
+
+        foreach(var dev in devices)
+        {
+            if (dev.Show)
+            {
+                var ImageDevicePair = new ImagesToDevice();
+                ImageDevicePair.DeviceId = dev.Device.Id;
+                ImageDevicePair.ImageId = img_id;
+                context.ImagesToDevices.Add(ImageDevicePair);
+            }
+        }
+        await context.SaveChangesAsync();
+        return OnClose.InvokeAsync(true);
+    }
+
+    private Task ModalCancel() => OnClose.InvokeAsync(false);
+
+    public class DeviceShowStatePair<TDevice, TState>
+{
+    public TDevice Device { get; set; }
+    public TState Show { get; set; }
+}
+}
