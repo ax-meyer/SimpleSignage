@@ -91,7 +91,7 @@
 
     public async Task  UploadFile()
     {
-        string save_filename = Guid.NewGuid().ToString() + "." + Path.GetExtension(selectedFile.Name); 
+        string save_filename = Guid.NewGuid().ToString() + Path.GetExtension(selectedFile.Name); 
         var path = $"{env.WebRootPath}/{save_filename}";
 
         using Stream stream = selectedFile.OpenReadStream();
