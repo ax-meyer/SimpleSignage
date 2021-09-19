@@ -1,0 +1,114 @@
+﻿@using SimpleSignage.Data;
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@using System
+@using Microsoft.AspNetCore.Hosting
+@inject IDbContextFactory<signageContext> DbFactory
+@inject IWebHostEnvironment env
+
+<div class="modal fade show" id="myModal" style="display:block; background-color: rgba(10,10,10,.8);"
+     aria-modal="true" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add new device</h4>
+                <button type="button" class="close" @onclick="@ModalCancel">&times;</button>
+            </div>
+            <div class="modal-body">
+
+                <EditForm Model="@NewDevice" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <table class="table">
+                    <tbody>
+                <tr>
+                    <td>Description</td>
+                    <td><InputText id="name" @bind-Value="NewDevice.Name" /></td>
+                </tr>
+                <tr id="device_selection">
+                    <td>Copy images from</td>
+                    <td>
+                     @foreach (var item in devices)
+                    {
+                        <div><InputCheckbox id="@item.Device.Name" @bind-Value="@item.Copy" /> @item.Device.Name</div>
+                    }
+                    </td>
+				</tr>               
+
+                </tbody>
+                </table>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+    public Device NewDevice { get; set; } = new();
+    public List<DeviceCopyPair<Device, bool>> devices { get; set; } = new();
+    IBrowserFile selectedFile { get; set; } = null;
+
+
+    [Parameter]
+    public EventCallback<bool> OnClose { get; set; }
+    private Task ModalCancel() => OnClose.InvokeAsync(false);
+
+    protected override void OnInitialized()
+    {
+        using var context = DbFactory.CreateDbContext();
+        foreach (var device in context.Devices.ToList())
+        {
+            DeviceCopyPair<Device, bool> a = new();
+            a.Device = device;
+            a.Copy = false;
+            devices.Add(a);
+        }
+    }
+  
+    public async Task<Task> HandleValidSubmit()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        List<long> images_to_add = new();
+
+        foreach(var dev in devices)
+        {
+            if (dev.Copy)
+            {
+                Device dlist = context.Devices
+                .Where(d => d.Id == dev.Device.Id)
+                .Include(d => d.Images)
+                .First();
+
+                foreach (Image img in dlist.Images)
+                {
+                    var img_id = img.Id;
+                    if (!images_to_add.Contains(img_id))
+                    {
+                        images_to_add.Add(img_id);
+                    }
+                }
+            }
+        }
+
+        foreach(long img_id in images_to_add)
+        {
+            NewDevice.Images.Add(context.Images.Where(d => d.Id == img_id).First());
+        }
+
+        context.Devices.Add(NewDevice);
+
+        await context.SaveChangesAsync();
+        return OnClose.InvokeAsync(true);
+    }
+
+
+    public class DeviceCopyPair<TDevice, TState>
+    {
+        public TDevice Device { get; set; }
+        public TState Copy { get; set; }
+    }
+}

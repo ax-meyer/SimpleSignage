@@ -48,3 +48,24 @@ a, .btn-link {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+.display-body {
+    background-color: black;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: fixed;
+}
+
+.verticalhorizontal {
+    display: table-cell;
+    height: 100vh;
+    text-align: center;
+    width: 100vw;
+    vertical-align: middle;
+}
+
+.posters {
+    object-fit: contain;
+    height: 100vh;
+    max-width: 100vw;
+}

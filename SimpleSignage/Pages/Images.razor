@@ -1,10 +1,6 @@
 ﻿@page "/"
 
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.EntityFrameworkCore.Infrastructure;
-@using Microsoft.Data.SqlClient;
-@using Microsoft.EntityFrameworkCore.Internal;
-@using Microsoft.EntityFrameworkCore.Storage;
 @using SimpleSignage.Data;
 @inject IDbContextFactory<signageContext> DbFactory;
 
@@ -14,6 +10,7 @@
 
     <thead>
         <tr>
+            <th></th>
             <th>
                 Description
             </th>
@@ -30,40 +27,40 @@
     <tbody>
         @foreach (var image in image_list)
         {
-            @if (!image.Item1.MarkedForDelete)
+            @if (!image.MarkedForDelete)
             {
                 <tr>
                     <td>
-                        <img src="@image.Item1.Filename"  width="100px" />
+                        <img src="@image.Filename"  width="100px" />
                     </td>
 
                     <td>
-                        @image.Item1.Description
+                        @image.Description
                     </td>
                     <td>
-                        @image.Item1.DateStart
+                        @image.DateStart.Date
                     </td>
                     <td>
-                        @if (image.Item1.Infinite)
+                        @if (image.Infinite)
                         {
                             <p>run forever</p>
                         }
                         else
                         {
-                            @image.Item1.DateEnd
+                            @image.DateEnd.Date
                         }
                     </td>
                     <td>
-                        @if (image.Item2.Count > 0)
+                        @if (image.Devices != null && image.Devices.Count > 0)
                         {
-                            foreach (var device in @image.Item2)
+                            foreach (var device in @image.Devices)
                             {
                                 <p>@device.Name</p>
                             }
                         }
                     </td>
                     <td>
-                        <button class="btn btn-primary" @onclick="() => deleteImage(image.Item1)">Delete</button>
+                        <button class="btn btn-primary" @onclick="() => deleteImage(image)">Delete</button>
                     </td>
                 </tr>
             }
@@ -88,7 +85,7 @@
 
 @code 
 {
-    public List<Tuple<Image, List<Device>>> image_list { get; set; } = new List<Tuple<Image, List<Device>>>();
+    public List<Image> image_list { get; set; }
 
     private bool AddImageDialogOpen { get; set; }
 
@@ -100,40 +97,16 @@
     private void UpdateImageList()
     {
         using var context = DbFactory.CreateDbContext();
-
-        string sort_by = "IMAGES.ID";
-        string order_by = "ASC";
-        string querystring = "SELECT IMAGES.ID as Column1, IMAGES.DESCRIPTION as Column2, IMAGES.ENABLED as Column3, IMAGES.DATE_START as Column4, IMAGES.DATE_END as Column5, IMAGES.INFINITE as Column6, IMAGES.FILENAME as Column7, group_concat(DEVICES.NAME, ', ') as Column8 FROM IMAGES INNER JOIN IMAGES_TO_DEVICES ON IMAGES.ID = IMAGES_TO_DEVICES.IMAGE_ID INNER JOIN DEVICES ON IMAGES_TO_DEVICES.DEVICE_ID = DEVICES.ID group by IMAGES.ID UNION SELECT IMAGES.ID as Column1, IMAGES.DESCRIPTION as Column2, IMAGES.ENABLED as Column3, IMAGES.DATE_START as Column4, IMAGES.DATE_END as Column5, IMAGES.INFINITE as Column6, IMAGES.FILENAME as Column7, null as Column8 FROM IMAGES WHERE IMAGES.MARKED_FOR_DELETE = 0 AND NOT EXISTS (SELECT * FROM IMAGES_TO_DEVICES WHERE IMAGES.ID = IMAGES_TO_DEVICES.IMAGE_ID)";
-
-        var res = context.Database.(querystring).ToList();
-
-        foreach (var image in context.Images)
-        {
-            var query = from map in context.ImagesToDevices
-                where map.ImageId == image.Id
-                select map.DeviceId;
-   
-            var device_ids = query.ToList();
-
-            List<Device> dev_list = new List<Device>();
-            foreach (var dev_id in device_ids)
-            {
-                var query2 = from device in context.Devices
-                        where device.Id == dev_id
-                        select device;
-                dev_list.Add(query2.FirstOrDefault());
-            }
-
-            image_list.Add(new Tuple<Image, List<Device>>(image, dev_list));
-
-        }
+        image_list = context.Images.Include(img => img.Devices).ToList();
     }
 
 
 	private void deleteImage(Image img)
     {
         using var context = DbFactory.CreateDbContext();
-        context.Images.Remove(img);
+        var ig = context.Images.Where(i => i.Id == img.Id).FirstOrDefault();
+        ig.Devices.Clear();
+        ig.MarkedForDelete = true;
         context.SaveChanges();
         UpdateImageList();
     }

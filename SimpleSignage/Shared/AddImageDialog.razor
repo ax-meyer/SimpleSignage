@@ -3,6 +3,7 @@
 @using System.IO
 @using System
 @using Microsoft.AspNetCore.Hosting
+@using SimpleSignage.Models
 @inject IDbContextFactory<signageContext> DbFactory
 @inject IWebHostEnvironment env
 
@@ -11,13 +12,14 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title">This is the title</h4>
+                <h4 class="modal-title">Add new image</h4>
                 <button type="button" class="close" @onclick="@ModalCancel">&times;</button>
             </div>
             <div class="modal-body">
 
                 <EditForm Model="@NewImage" OnValidSubmit="@HandleValidSubmit">
                 <DataAnnotationsValidator />
+                <CustomValidation @ref="customValidation" />
                 <ValidationSummary />
 
                 <table class="table">
@@ -41,7 +43,7 @@
                     <td><InputDate id="enddate" @bind-Value="NewImage.DateEnd" /></td>
 				</tr>
                 }
-                <tr>
+                <tr id="device_selection">
                     <td>Devices to show on</td>
                     <td>
                      @foreach (var item in devices)
@@ -50,10 +52,14 @@
                     }
                     </td>
 				</tr>
-                <InputFile AllowedExtensions=".jpg;.png;" CustomExtensionMessage="Only .jpg and .png files are allowed."  OnChange="@LoadFile" />
 
+                <tr>
+                    <td colspan="2">
+                        <InputFile AllowedExtensions=".jpg;.png;" CustomExtensionMessage="Only .jpg and .png files are allowed."  OnChange="@LoadFile" id="fileload"/>
+                    </td>
+                </tr>
                 
-                
+
                 </tbody>
                 </table>
 
@@ -65,23 +71,28 @@
 </div>
 
 @code{
+    private CustomValidation customValidation;
+    public Image NewImage { get; set; } = new();
+    public List<DeviceShowStatePair<Device, bool>> devices { get; set; } = new();
+    IBrowserFile selectedFile { get; set; } = null;
 
-    public Image NewImage { get; set; } = new Image();
-    public List<DeviceShowStatePair<Device, bool>> devices { get; set; } = new List<DeviceShowStatePair<Device, bool>>();
+
+    [Parameter]
+    public EventCallback<bool> OnClose { get; set; }
+    private Task ModalCancel() => OnClose.InvokeAsync(false);
 
     protected override void OnInitialized()
     {
         using var context = DbFactory.CreateDbContext();
         foreach (var device in context.Devices.ToList())
         {
-            var a = new DeviceShowStatePair<Device, bool>();
+            DeviceShowStatePair<Device, bool> a = new();
             a.Device = device;
             a.Show = false;
             devices.Add(a);
         }
     }
 
-    IBrowserFile selectedFile { get; set; }
 
     private void LoadFile(InputFileChangeEventArgs e)
     {
@@ -101,40 +112,70 @@
         NewImage.Filename = save_filename;
     }
 
-
-
-    [Parameter]
-    public EventCallback<bool> OnClose { get; set; }
-
     public async Task<Task> HandleValidSubmit()
     {
+        customValidation.ClearErrors();
+
+        Dictionary<string, List<string>> errors = new();
+
+        if (NewImage.Description == null || NewImage.Description.Trim() == string.Empty)
+        {
+            errors.Add(nameof(NewImage.Description),
+                new() { "Description may not be empty." });
+        }
+
+        if (!NewImage.Infinite && NewImage.DateStart > NewImage.DateEnd)
+        {
+            errors.Add(nameof(NewImage.DateStart), new() { "Date Start may not be after Date End." });
+        }
+
+        if (selectedFile == null)
+        {
+            errors.Add("fileload", new() { "Please select an image file." });
+        }
+
+        bool dev_selected = false;
+        foreach(var dev in devices)
+        {
+            if (dev.Show)
+            {
+                dev_selected = true;
+                break;
+            }
+        }
+
+        if (NewImage.Devices == null || dev_selected == false)
+        {
+            errors.Add("device_selection", new() { "Please select at least one device." });
+        }
+
+        if (errors.Any())
+        {
+            customValidation.DisplayErrors(errors);
+            return Task.FromResult<object>(null);
+        }
+
         await UploadFile();
         using var context = DbFactory.CreateDbContext();
-        
-        context.Images.Add(NewImage);
-
-
-        long img_id = context.Images.OrderBy(img => img.Id).Last().Id;
 
         foreach(var dev in devices)
         {
             if (dev.Show)
             {
-                var ImageDevicePair = new ImagesToDevice();
-                ImageDevicePair.DeviceId = dev.Device.Id;
-                ImageDevicePair.ImageId = img_id;
-                context.ImagesToDevices.Add(ImageDevicePair);
+                NewImage.Devices.Add(context.Devices.Where(d => d.Id == dev.Device.Id).First());
             }
         }
+        
+        context.Images.Add(NewImage);
+
         await context.SaveChangesAsync();
         return OnClose.InvokeAsync(true);
     }
 
-    private Task ModalCancel() => OnClose.InvokeAsync(false);
 
     public class DeviceShowStatePair<TDevice, TState>
-{
-    public TDevice Device { get; set; }
-    public TState Show { get; set; }
-}
+    {
+        public TDevice Device { get; set; }
+        public TState Show { get; set; }
+    }
 }

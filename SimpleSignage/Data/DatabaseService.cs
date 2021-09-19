@@ -48,7 +48,8 @@ namespace SimpleSignage.Data
                     context.Devices.AddRange(
                         new Device
                         {
-                            Name = "Küche"
+                            Name = "Küche",
+                            Images = context.Images.ToList()
                         },
 
                         new Device
@@ -57,6 +58,8 @@ namespace SimpleSignage.Data
                         }
                     );
                 }
+                context.SaveChanges();
+                context.Devices.Where(x => x.Name == "Küche").FirstOrDefault().Images = context.Images.ToList();
                 context.SaveChanges();
             }
         }

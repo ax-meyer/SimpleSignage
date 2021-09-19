@@ -20,7 +20,6 @@ namespace SimpleSignage.Data
         public virtual DbSet<Cleanup> Cleanups { get; set; }
         public virtual DbSet<Device> Devices { get; set; }
         public virtual DbSet<Image> Images { get; set; }
-        public virtual DbSet<ImagesToDevice> ImagesToDevices { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -79,17 +78,6 @@ namespace SimpleSignage.Data
                 entity.Property(e => e.MarkedForDelete)
                     .HasColumnName("MARKED_FOR_DELETE")
                     .HasDefaultValueSql("0");
-            });
-
-            modelBuilder.Entity<ImagesToDevice>(entity =>
-            {
-                entity.ToTable("IMAGES_TO_DEVICES");
-
-                entity.Property(e => e.Id).HasColumnName("ID");
-
-                entity.Property(e => e.DeviceId).HasColumnName("DEVICE_ID");
-
-                entity.Property(e => e.ImageId).HasColumnName("IMAGE_ID");
             });
 
             OnModelCreatingPartial(modelBuilder);
