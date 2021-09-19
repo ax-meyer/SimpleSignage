@@ -10,6 +10,7 @@
 
     <thead>
         <tr>
+            <th></th>
             <th>
                 Description
             </th>
@@ -26,37 +27,53 @@
     <tbody>
         @foreach (var image in image_list)
         {
-            using var context = DbFactory.CreateDbContext();
-            var query = from pair in context.ImagesToDevices
-            <tr>
-                <td>
-                    @image.Description
-                </td>
-                <td>
-                    @image.DateStart
-                </td>
-                <td>
-                    @if (image.Infinite)
-                    {
-                        <p>run forever</p>
-                    }
-                    else
-                    {
-                        @image.DateEnd
-                    }
-                </td>
-                <td>
-                     
-				</td>
-                <td>
-                    <button class="btn btn-primary" @onclick="() => deleteImage(image)">Delete</button>
-				</td>
-            </tr>
+            @if (!image.MarkedForDelete)
+            {
+                <tr>
+                    <td>
+                        <img src="@image.Filename"  width="100px" />
+                    </td>
+
+                    <td>
+                        @image.Description
+                    </td>
+                    <td>
+                        @image.DateStart.Date
+                    </td>
+                    <td>
+                        @if (image.Infinite)
+                        {
+                            <p>run forever</p>
+                        }
+                        else
+                        {
+                            @image.DateEnd.Date
+                        }
+                    </td>
+                    <td>
+                        @if (image.Devices != null && image.Devices.Count > 0)
+                        {
+                            foreach (var device in @image.Devices)
+                            {
+                                <p>@device.Name</p>
+                            }
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => deleteImage(image)">Delete</button>
+                    </td>
+                </tr>
+            }
         }
         <tr>
             <td>
                 <button class="btn btn-primary" @onclick="AddImage">Add image</button>
 			</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
 		</tr>
     </tbody>
 </table>
@@ -66,8 +83,9 @@
     <AddImageDialog OnClose="@AddImageDialogClosing" /> 
 }
 
-@code {
-
+@code 
+{
+    public List<Image> image_list { get; set; }
 
     private bool AddImageDialogOpen { get; set; }
 
@@ -79,20 +97,16 @@
     private void UpdateImageList()
     {
         using var context = DbFactory.CreateDbContext();
-
-        var query = from image in context.Images
-            join in context.ImagesToDevices
-                on image.Id equals devices.ImageId
-            select new { person, photo };
-		image_list = context.Images.ToList();
+        image_list = context.Images.Include(img => img.Devices).ToList();
     }
 
-	public List<Image> image_list { get; set; }
 
 	private void deleteImage(Image img)
     {
         using var context = DbFactory.CreateDbContext();
-        context.Images.Remove(img);
+        var ig = context.Images.Where(i => i.Id == img.Id).FirstOrDefault();
+        ig.Devices.Clear();
+        ig.MarkedForDelete = true;
         context.SaveChanges();
         UpdateImageList();
     }
@@ -105,6 +119,7 @@
     private void AddImageDialogClosing()
     {
         AddImageDialogOpen = false;
+        UpdateImageList();
     }
 
 }

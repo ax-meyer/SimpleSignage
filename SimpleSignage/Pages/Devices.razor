@@ -1,17 +1,92 @@
 ﻿@page "/devices"
 
-<h1>Counter</h1>
+@using Microsoft.EntityFrameworkCore
+@using SimpleSignage.Data;
+@inject IDbContextFactory<signageContext> DbFactory;
 
-<p>Current count: @currentCount</p>
+<h1>Manage images</h1>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<table class="table">
 
-@code {
-    
-    private int currentCount = 0;
+    <thead>
+        <tr>
+            <th>
+                Name
+            </th>
+            <th>
+                Number of images
+            </th>
+            <th>Device ID</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (Device device in device_list)
+        {
+                <tr>
+                    <td>
+                        @device.Name
+                    </td>
+                    <td>
+                        @device.Images.Count
+                    </td>
+                    <td>@device.Id</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => deleteDevice(device)">Delete</button>
+                    </td>
+                </tr>
+        }
+        <tr>
+            <td>
+                <button class="btn btn-primary" @onclick="AddDevice">Add device</button>
+			</td>
+            <td></td>
+            <td></td>
+            <td></td>
+		</tr>
+    </tbody>
+</table>
 
-    private void IncrementCount()
+@if (AddDeviceDialogOpen)
+{
+    <AddDeviceDialog OnClose="@AddDeviceDialogClosing" /> 
+}
+
+@code 
+{
+    public List<Device> device_list { get; set; }
+
+    private bool AddDeviceDialogOpen { get; set; }
+
+    protected override void OnInitialized()
     {
-        currentCount++;
+        UpdateDeviceList();
     }
+
+    private void UpdateDeviceList()
+    {
+        using var context = DbFactory.CreateDbContext();
+        device_list = context.Devices.Include(d => d.Images).ToList();
+    }
+
+
+	private void deleteDevice(Device dev)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Devices.Remove(dev);
+        context.SaveChanges();
+        UpdateDeviceList();
+    }
+
+    private void AddDevice()
+    {
+        AddDeviceDialogOpen = true;
+    }
+
+    private void AddDeviceDialogClosing()
+    {
+        AddDeviceDialogOpen = false;
+        UpdateDeviceList();
+    }
+
 }
