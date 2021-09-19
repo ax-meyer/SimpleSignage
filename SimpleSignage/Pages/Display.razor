@@ -1,0 +1,65 @@
+﻿@layout EmptyLayout
+@page "/display"
+@page "/display/{device_id:long}"
+
+@using Microsoft.EntityFrameworkCore
+@using SimpleSignage.Data;
+@inject IDbContextFactory<signageContext> DbFactory;
+
+
+<body class=display-body>
+<div class="verticalhorizontal">
+    <!-- Page Content -->
+    <img class="posters" id="display_image" align="middle" src="@image_list[@img_list_ind].Filename" />
+</div>
+</body>>
+
+@code {
+
+    [Parameter]
+    public long Device_id { get; set; } = 1;
+
+    public List<Image> image_list { get; set; }
+    public int img_list_ind = 0;
+
+    private static System.Timers.Timer imageCycleTimer;
+
+
+    private void UpdateImageList()
+    {
+        using var context = DbFactory.CreateDbContext();
+        var query = 
+        from image in context.Images
+        where image.Devices.Any(d => d.Id == Device_id)
+        select image;
+
+        image_list = query.ToList();
+    }
+
+    protected override void OnInitialized()
+    {
+        UpdateImageList();
+        StartTimer();
+    }
+
+    public void StartTimer()
+    {
+        imageCycleTimer = new System.Timers.Timer(1000);
+        imageCycleTimer.Elapsed += TimerAction;
+        imageCycleTimer.Enabled = true;
+    }
+
+    public void TimerAction(Object source, System.Timers.ElapsedEventArgs e)
+    {
+        UpdateImageList();
+        if (image_list.Count > 0)
+        {
+            int ind = img_list_ind + 1;
+            ind = ind % image_list.Count();
+            img_list_ind = ind;
+            InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+}

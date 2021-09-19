@@ -1,0 +1,181 @@
+﻿@using SimpleSignage.Data;
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@using System
+@using Microsoft.AspNetCore.Hosting
+@using SimpleSignage.Models
+@inject IDbContextFactory<signageContext> DbFactory
+@inject IWebHostEnvironment env
+
+<div class="modal fade show" id="myModal" style="display:block; background-color: rgba(10,10,10,.8);"
+     aria-modal="true" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add new image</h4>
+                <button type="button" class="close" @onclick="@ModalCancel">&times;</button>
+            </div>
+            <div class="modal-body">
+
+                <EditForm Model="@NewImage" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <CustomValidation @ref="customValidation" />
+                <ValidationSummary />
+
+                <table class="table">
+                    <tbody>
+                <tr>
+                    <td>Description</td>
+                    <td><InputText id="name" @bind-Value="NewImage.Description" /></td>
+                </tr>
+                <tr>
+                    <td>Start date</td>
+                    <td><InputDate id="startdate" @bind-Value="NewImage.DateStart" /></td>
+				</tr>
+                <tr>
+                    <td>Run infinitely?</td>
+                    <td><InputCheckbox id="infinite" @bind-Value="NewImage.Infinite" /></td>
+				</tr>
+                @if(!NewImage.Infinite)
+                {
+                <tr>
+                    <td>End date</td>
+                    <td><InputDate id="enddate" @bind-Value="NewImage.DateEnd" /></td>
+				</tr>
+                }
+                <tr id="device_selection">
+                    <td>Devices to show on</td>
+                    <td>
+                     @foreach (var item in devices)
+                    {
+                        <div><InputCheckbox id="@item.Device.Name" @bind-Value="@item.Show" /> @item.Device.Name</div>
+                    }
+                    </td>
+				</tr>
+
+                <tr>
+                    <td colspan="2">
+                        <InputFile AllowedExtensions=".jpg;.png;" CustomExtensionMessage="Only .jpg and .png files are allowed."  OnChange="@LoadFile" id="fileload"/>
+                    </td>
+                </tr>
+                
+
+                </tbody>
+                </table>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+    private CustomValidation customValidation;
+    public Image NewImage { get; set; } = new();
+    public List<DeviceShowStatePair<Device, bool>> devices { get; set; } = new();
+    IBrowserFile selectedFile { get; set; } = null;
+
+
+    [Parameter]
+    public EventCallback<bool> OnClose { get; set; }
+    private Task ModalCancel() => OnClose.InvokeAsync(false);
+
+    protected override void OnInitialized()
+    {
+        using var context = DbFactory.CreateDbContext();
+        foreach (var device in context.Devices.ToList())
+        {
+            DeviceShowStatePair<Device, bool> a = new();
+            a.Device = device;
+            a.Show = false;
+            devices.Add(a);
+        }
+    }
+
+
+    private void LoadFile(InputFileChangeEventArgs e)
+    {
+        selectedFile= e.File;
+        this.StateHasChanged();
+    }
+
+    public async Task  UploadFile()
+    {
+        string save_filename = Guid.NewGuid().ToString() + Path.GetExtension(selectedFile.Name); 
+        var path = $"{env.WebRootPath}/{save_filename}";
+
+        using Stream stream = selectedFile.OpenReadStream();
+        using FileStream fs = File.Create(path);
+        await stream.CopyToAsync(fs);
+
+        NewImage.Filename = save_filename;
+    }
+
+    public async Task<Task> HandleValidSubmit()
+    {
+        customValidation.ClearErrors();
+
+        Dictionary<string, List<string>> errors = new();
+
+        if (NewImage.Description == null || NewImage.Description.Trim() == string.Empty)
+        {
+            errors.Add(nameof(NewImage.Description),
+                new() { "Description may not be empty." });
+        }
+
+        if (!NewImage.Infinite && NewImage.DateStart > NewImage.DateEnd)
+        {
+            errors.Add(nameof(NewImage.DateStart), new() { "Date Start may not be after Date End." });
+        }
+
+        if (selectedFile == null)
+        {
+            errors.Add("fileload", new() { "Please select an image file." });
+        }
+
+        bool dev_selected = false;
+        foreach(var dev in devices)
+        {
+            if (dev.Show)
+            {
+                dev_selected = true;
+                break;
+            }
+        }
+
+        if (NewImage.Devices == null || dev_selected == false)
+        {
+            errors.Add("device_selection", new() { "Please select at least one device." });
+        }
+
+        if (errors.Any())
+        {
+            customValidation.DisplayErrors(errors);
+            return Task.FromResult<object>(null);
+        }
+
+        await UploadFile();
+        using var context = DbFactory.CreateDbContext();
+
+        foreach(var dev in devices)
+        {
+            if (dev.Show)
+            {
+                NewImage.Devices.Add(context.Devices.Where(d => d.Id == dev.Device.Id).First());
+            }
+        }
+        
+        context.Images.Add(NewImage);
+
+        await context.SaveChangesAsync();
+        return OnClose.InvokeAsync(true);
+    }
+
+
+    public class DeviceShowStatePair<TDevice, TState>
+    {
+        public TDevice Device { get; set; }
+        public TState Show { get; set; }
+    }
+}

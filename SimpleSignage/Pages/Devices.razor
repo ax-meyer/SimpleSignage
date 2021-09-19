@@ -1,0 +1,92 @@
+﻿@page "/devices"
+
+@using Microsoft.EntityFrameworkCore
+@using SimpleSignage.Data;
+@inject IDbContextFactory<signageContext> DbFactory;
+
+<h1>Manage images</h1>
+
+<table class="table">
+
+    <thead>
+        <tr>
+            <th>
+                Name
+            </th>
+            <th>
+                Number of images
+            </th>
+            <th>Device ID</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (Device device in device_list)
+        {
+                <tr>
+                    <td>
+                        @device.Name
+                    </td>
+                    <td>
+                        @device.Images.Count
+                    </td>
+                    <td>@device.Id</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => deleteDevice(device)">Delete</button>
+                    </td>
+                </tr>
+        }
+        <tr>
+            <td>
+                <button class="btn btn-primary" @onclick="AddDevice">Add device</button>
+			</td>
+            <td></td>
+            <td></td>
+            <td></td>
+		</tr>
+    </tbody>
+</table>
+
+@if (AddDeviceDialogOpen)
+{
+    <AddDeviceDialog OnClose="@AddDeviceDialogClosing" /> 
+}
+
+@code 
+{
+    public List<Device> device_list { get; set; }
+
+    private bool AddDeviceDialogOpen { get; set; }
+
+    protected override void OnInitialized()
+    {
+        UpdateDeviceList();
+    }
+
+    private void UpdateDeviceList()
+    {
+        using var context = DbFactory.CreateDbContext();
+        device_list = context.Devices.Include(d => d.Images).ToList();
+    }
+
+
+	private void deleteDevice(Device dev)
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Devices.Remove(dev);
+        context.SaveChanges();
+        UpdateDeviceList();
+    }
+
+    private void AddDevice()
+    {
+        AddDeviceDialogOpen = true;
+    }
+
+    private void AddDeviceDialogClosing()
+    {
+        AddDeviceDialogOpen = false;
+        UpdateDeviceList();
+    }
+
+}

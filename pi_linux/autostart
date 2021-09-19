@@ -1,5 +1,0 @@
-@unclutterf
-@xset s off
-@xset -dpms
-@xset s noblank
-@chromium-browser --noerrdialogs --disable-session-crashed-bubble --incognito --disable-infobars --kiosk --app https://your-url.com/display.php?device=<your-device-id>
